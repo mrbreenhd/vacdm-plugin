@@ -2,6 +2,7 @@
 
 #include "core/Server.h"
 #include "log/Logger.h"
+#include "main.h"
 #include "utils/Date.h"
 
 using namespace vacdm::com;
