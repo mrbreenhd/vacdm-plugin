@@ -347,8 +347,11 @@ void DataManager::setActiveAirports(const std::list<std::string> activeAirports)
 }
 
 void DataManager::queueFlightplanUpdate(EuroScopePlugIn::CFlightPlan flightplan) {
+    // skip the update if:
+    // - the flightplan or its data is invalid
+    // - or the aircraft is out of range therefore GetSimulated() is true
     if (false == flightplan.IsValid() || nullptr == flightplan.GetFlightPlanData().GetPlanType() ||
-        nullptr == flightplan.GetFlightPlanData().GetOrigin())
+        nullptr == flightplan.GetFlightPlanData().GetOrigin() || flightplan.GetSimulated())
         return;
 
     auto pilot = this->CFlightPlanToPilot(flightplan);
