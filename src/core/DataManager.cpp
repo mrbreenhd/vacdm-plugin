@@ -515,8 +515,16 @@ types::Pilot DataManager::CFlightPlanToPilot(const EuroScopePlugIn::CFlightPlan 
     pilot.lastUpdate = std::chrono::utc_clock::now();
 
     // position data
-    pilot.latitude = flightplan.GetFPTrackPosition().GetPosition().m_Latitude;
-    pilot.longitude = flightplan.GetFPTrackPosition().GetPosition().m_Longitude;
+    if (Plugin->RadarTargetSelect(pilot.callsign.c_str()).IsValid()) {
+        // get the position of the flight using its radar target, it's more precise
+        pilot.latitude = Plugin->RadarTargetSelect(pilot.callsign.c_str()).GetPosition().GetPosition().m_Latitude;
+        pilot.longitude = Plugin->RadarTargetSelect(pilot.callsign.c_str()).GetPosition().GetPosition().m_Longitude;
+    } else {
+        // if we have no radar target we will use the fptrackposition,
+        // not sufficient precision to determine the taxizone
+        pilot.latitude = flightplan.GetFPTrackPosition().GetPosition().m_Latitude;
+        pilot.longitude = flightplan.GetFPTrackPosition().GetPosition().m_Longitude;
+    }
 
     // flightplan & clearance data
     pilot.origin = flightplan.GetFlightPlanData().GetOrigin();
