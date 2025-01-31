@@ -99,88 +99,87 @@ void DataManager::run() {
 }
 
 void DataManager::processAsynchronousMessages(std::map<std::string, std::array<types::Pilot, 3U>>& pilots) {
-    this->m_asyncMessagesLock.lock();
-    auto messages = this->m_asynchronousMessages;
-    this->m_asynchronousMessages.clear();
-    this->m_asyncMessagesLock.unlock();
+    std::list<AsynchronousMessage> messages;
+    {
+        std::lock_guard guard(this->m_asyncMessagesLock);
+        messages = std::move(this->m_asynchronousMessages);
+    }
 
     for (auto& message : messages) {
-        // find pilot in list
-        for (auto& [callsign, data] : pilots) {
-            if (callsign == message.callsign) {
-                std::string messageType;
+        auto pilot = pilots.find(message.callsign);
+        if (pilot == pilots.end()) continue;
 
-                switch (message.type) {
-                    case MessageType::UpdateEXOT:
-                        Server::instance().updateExot(message.callsign, message.value);
-                        messageType = "EXOT";
-                        break;
-                    case MessageType::UpdateTOBT:
-                        Server::instance().updateTobt(data[ConsolidatedData], message.value, false);
-                        messageType = "TOBT";
-                        break;
-                    case MessageType::UpdateTOBTConfirmed:
-                        Server::instance().updateTobt(data[ConsolidatedData], message.value, true);
-                        messageType = "TOBT Confirmed Status";
-                        break;
-                    case MessageType::UpdateASAT:
-                        Server::instance().updateAsat(message.callsign, message.value);
-                        messageType = "ASAT";
-                        break;
-                    case MessageType::UpdateASRT:
-                        Server::instance().updateAsrt(message.callsign, message.value);
-                        messageType = "ASRT";
-                        break;
-                    case MessageType::UpdateAOBT:
-                        Server::instance().updateAobt(message.callsign, message.value);
-                        messageType = "AOBT";
-                        break;
-                    case MessageType::UpdateAORT:
-                        Server::instance().updateAort(message.callsign, message.value);
-                        messageType = "AORT";
-                        break;
-                    case MessageType::ResetTOBT:
-                        Server::instance().resetTobt(message.callsign, types::defaultTime,
-                                                     data[ConsolidatedData].tobt_state);
-                        messageType = "TOBT reset";
-                        break;
-                    case MessageType::ResetASAT:
-                        Server::instance().updateAsat(message.callsign, message.value);
-                        messageType = "ASAT reset";
-                        break;
-                    case MessageType::ResetASRT:
-                        Server::instance().updateAsrt(message.callsign, message.value);
-                        messageType = "ASRT reset";
-                        break;
-                    case MessageType::ResetTOBTConfirmed:
-                        Server::instance().resetTobt(message.callsign, data[ConsolidatedData].tobt, "GUESS");
-                        messageType = "TOBT confirmed reset";
-                        break;
-                    case MessageType::ResetAORT:
-                        Server::instance().updateAort(message.callsign, message.value);
-                        messageType = "AORT reset";
-                        break;
-                    case MessageType::ResetAOBT:
-                        Server::instance().updateAobt(message.callsign, message.value);
-                        messageType = "AOBT reset";
-                        break;
-                    case MessageType::ResetPilot:
-                        Server::instance().deletePilot(message.callsign);
-                        messageType = "Pilot reset";
-                        break;
+        auto& [callsign, data] = *pilot;
 
-                    default:
-                        break;
-                }
+        std::string messageType;
 
-                Logger::instance().log(Logger::LogSender::DataManager,
-                                       "Sending " + messageType + " update: " + callsign + " - " +
-                                           utils::Date::timestampToIsoString(message.value),
-                                       Logger::LogLevel::Info);
-
+        switch (message.type) {
+            case MessageType::UpdateEXOT:
+                Server::instance().updateExot(message.callsign, message.value);
+                messageType = "EXOT";
                 break;
-            }
+            case MessageType::UpdateTOBT:
+                Server::instance().updateTobt(data[ConsolidatedData], message.value, false);
+                messageType = "TOBT";
+                break;
+            case MessageType::UpdateTOBTConfirmed:
+                Server::instance().updateTobt(data[ConsolidatedData], message.value, true);
+                messageType = "TOBT Confirmed Status";
+                break;
+            case MessageType::UpdateASAT:
+                Server::instance().updateAsat(message.callsign, message.value);
+                messageType = "ASAT";
+                break;
+            case MessageType::UpdateASRT:
+                Server::instance().updateAsrt(message.callsign, message.value);
+                messageType = "ASRT";
+                break;
+            case MessageType::UpdateAOBT:
+                Server::instance().updateAobt(message.callsign, message.value);
+                messageType = "AOBT";
+                break;
+            case MessageType::UpdateAORT:
+                Server::instance().updateAort(message.callsign, message.value);
+                messageType = "AORT";
+                break;
+            case MessageType::ResetTOBT:
+                Server::instance().resetTobt(message.callsign, types::defaultTime, data[ConsolidatedData].tobt_state);
+                messageType = "TOBT reset";
+                break;
+            case MessageType::ResetASAT:
+                Server::instance().updateAsat(message.callsign, message.value);
+                messageType = "ASAT reset";
+                break;
+            case MessageType::ResetASRT:
+                Server::instance().updateAsrt(message.callsign, message.value);
+                messageType = "ASRT reset";
+                break;
+            case MessageType::ResetTOBTConfirmed:
+                Server::instance().resetTobt(message.callsign, data[ConsolidatedData].tobt, "GUESS");
+                messageType = "TOBT confirmed reset";
+                break;
+            case MessageType::ResetAORT:
+                Server::instance().updateAort(message.callsign, message.value);
+                messageType = "AORT reset";
+                break;
+            case MessageType::ResetAOBT:
+                Server::instance().updateAobt(message.callsign, message.value);
+                messageType = "AOBT reset";
+                break;
+            case MessageType::ResetPilot:
+                Server::instance().deletePilot(message.callsign);
+                pilots.erase(message.callsign);
+                messageType = "Pilot reset";
+                break;
+
+            default:
+                break;
         }
+
+        Logger::instance().log(Logger::LogSender::DataManager,
+                               "Sending " + messageType + " update: " + message.callsign + " - " +
+                                   utils::Date::timestampToIsoString(message.value),
+                               Logger::LogLevel::Info);
     }
 }
 
@@ -277,7 +276,18 @@ void DataManager::handleTagFunction(MessageType type, const std::string callsign
             pilot.aobt = types::defaultTime;
             break;
         case MessageType::ResetPilot:
-            this->m_pilots.erase(it);
+            pilot.eobt = types::defaultTime;
+            pilot.tobt = types::defaultTime;
+            pilot.ctot = types::defaultTime;
+            pilot.ttot = types::defaultTime;
+            pilot.tsat = types::defaultTime;
+            pilot.exot = types::defaultTime;
+            pilot.asat = types::defaultTime;
+            pilot.aobt = types::defaultTime;
+            pilot.atot = types::defaultTime;
+            pilot.atot = types::defaultTime;
+            pilot.asrt = types::defaultTime;
+            pilot.aort = types::defaultTime;
             break;
         default:
             break;
