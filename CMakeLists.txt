@@ -70,7 +70,6 @@ SET(SOURCE_FILES
     src/vACDM.h
     src/main.cpp
     src/main.h
-    src/Version.h
 )
 
 ADD_LIBRARY(vACDM SHARED ${SOURCE_FILES})
