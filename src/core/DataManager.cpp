@@ -63,9 +63,11 @@ void DataManager::run() {
         if (counter++ % updateCycleSeconds != 0) continue;
 
         // obtain a copy of the pilot data, work with the copy to minimize lock time
-        this->m_pilotLock.lock();
-        auto pilots = this->m_pilots;
-        this->m_pilotLock.unlock();
+        std::map<std::string, std::array<vacdm::types::Pilot, 3U>> pilots;
+        {
+            std::lock_guard guard(this->m_pilotLock);
+            pilots = this->m_pilots;
+        }
 
         this->processAsynchronousMessages(pilots);
 
@@ -91,10 +93,11 @@ void DataManager::run() {
             }
         }
 
-        // replace the pilot data with the updated copy
-        this->m_pilotLock.lock();
-        this->m_pilots = pilots;
-        this->m_pilotLock.unlock();
+        {
+            // replace the pilot data with the updated copy
+            std::lock_guard guard(this->m_pilotLock);
+            this->m_pilots = pilots;
+        }
     }
 }
 
@@ -445,10 +448,11 @@ void DataManager::consolidateData(std::array<types::Pilot, 3>& pilot) {
 
 void DataManager::processEuroScopeUpdates(std::map<std::string, std::array<types::Pilot, 3U>>& pilots) {
     // obtain a copy of the flightplan updates, clear the update list, consolidate flightplan updates
-    this->m_euroscopeUpdatesLock.lock();
-    auto flightplanUpdates = this->m_euroscopeFlightplanUpdates;
-    this->m_euroscopeFlightplanUpdates.clear();
-    this->m_euroscopeUpdatesLock.unlock();
+    std::list<EuroscopeFlightplanUpdate> flightplanUpdates;
+    {
+        std::lock_guard guard(this->m_euroscopeUpdatesLock);
+        flightplanUpdates = std::move(this->m_euroscopeFlightplanUpdates);
+    }
 
     this->consolidateFlightplanUpdates(flightplanUpdates);
 
