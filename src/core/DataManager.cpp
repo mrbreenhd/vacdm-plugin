@@ -451,31 +451,26 @@ void DataManager::processEuroScopeUpdates(std::map<std::string, std::array<types
     std::list<EuroscopeFlightplanUpdate> flightplanUpdates;
     {
         std::lock_guard guard(this->m_euroscopeUpdatesLock);
-        flightplanUpdates = std::move(this->m_euroscopeFlightplanUpdates);
+        flightplanUpdates.swap(this->m_euroscopeFlightplanUpdates);
     }
 
     this->consolidateFlightplanUpdates(flightplanUpdates);
 
     for (auto& update : flightplanUpdates) {
-        bool found = false;
+        const auto& pilot = update.data;
 
-        const auto pilot = update.data;
+        auto it = pilots.find(pilot.callsign);
 
-        // find pilot in list
-        for (auto& pair : pilots) {
-            if (pilot.callsign == pair.first) {
-                Logger::instance().log(Logger::LogSender::DataManager, "Updated data of " + pilot.callsign,
-                                       Logger::LogLevel::Info);
-
-                pair.second[EuroscopeData] = pilot;
-                found = true;
-                break;
-            }
-        }
-
-        if (false == found) {
-            Logger::instance().log(Logger::LogSender::DataManager, "Added " + pilot.callsign, Logger::LogLevel::Info);
-            pilots.insert({pilot.callsign, {pilot, pilot, types::Pilot()}});
+        if (it != pilots.end()) {
+            // Pilot found, update the corresponding data
+            Logger::instance().log(Logger::LogSender::DataManager, "Updated data of " + pilot.callsign,
+                                   Logger::LogLevel::Info);
+            it->second[EuroscopeData] = pilot;
+        } else {
+            // Pilot not found, add a new entry
+            Logger::instance().log(Logger::LogSender::DataManager,
+                                   "Added new pilot entry for callsign: " + pilot.callsign, Logger::LogLevel::Info);
+            pilots.insert({pilot.callsign, std::array<types::Pilot, 3U>{pilot, pilot, types::Pilot()}});
         }
     }
 }
