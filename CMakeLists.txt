@@ -70,7 +70,6 @@ SET(SOURCE_FILES
     src/vACDM.h
     src/main.cpp
     src/main.h
-    src/Version.h
 )
 
 ADD_LIBRARY(vACDM SHARED ${SOURCE_FILES})
@@ -83,4 +82,9 @@ TARGET_LINK_LIBRARIES(vACDM optimized ${CMAKE_SOURCE_DIR}/external/lib/libcurl.l
 TARGET_LINK_LIBRARIES(vACDM optimized ${CMAKE_SOURCE_DIR}/external/lib/Geographic.lib)
 
 # move config file to output dir, allows loading of DLL from output dir
-configure_file(${CMAKE_SOURCE_DIR}/src/config/vacdm.txt ${CMAKE_BINARY_DIR}/vacdm.txt COPY)
+configure_file(${CMAKE_SOURCE_DIR}/src/config/vacdm.txt ${CMAKE_BINARY_DIR}/vacdm.txt COPYONLY)
+
+set(gtest_force_shared_crt on)
+include(CTest)
+add_subdirectory(external)
+add_subdirectory(src/tests)
