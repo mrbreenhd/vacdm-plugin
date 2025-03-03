@@ -140,7 +140,7 @@ bool Server::checkWebApi() {
 
     __receivedGetData.clear();
 
-    std::string url = m_baseUrl + "/api/v1/version";
+    std::string url = m_baseUrl + "/api/v1/config/version";
     curl_easy_setopt(m_getRequest.socket, CURLOPT_URL, url.c_str());
 
     // send the GET request
